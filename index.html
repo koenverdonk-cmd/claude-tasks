@@ -579,12 +579,12 @@
 
 <script>
 // ============================================================
-// CONFIG — vul in na Google Cloud setup
+// CONFIG – vul in na Google Cloud setup
 // ============================================================
 const CONFIG = {
   CLIENT_ID: localStorage.getItem('gd_client_id') || '',
   FILE_NAME: 'TASKS.md',
-  SCOPES: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly'
+  SCOPES: 'https://www.googleapis.com/auth/drive'
 };
 
 // ============================================================
@@ -681,13 +681,27 @@ function initGoogleAuth() {
     client_id: CONFIG.CLIENT_ID,
     scope: CONFIG.SCOPES,
     callback: async (response) => {
-      if (response.error) { showToast('Auth mislukt'); return; }
+      if (response.error) {
+        // Stille login mislukt – toon connect-knop
+        state.loading = false;
+        render();
+        return;
+      }
       state.accessToken = response.access_token;
       state.authenticated = true;
       render();
       await loadFile();
+    },
+    error_callback: () => {
+      state.loading = false;
+      render();
     }
   });
+
+  // Probeer direct stille login – geen popup als al eerder toestemming gegeven
+  state.loading = true;
+  render();
+  state.tokenClient.requestAccessToken({ prompt: '' });
 }
 
 function signIn() {
@@ -696,7 +710,8 @@ function signIn() {
     return;
   }
   if (state.tokenClient) {
-    state.tokenClient.requestAccessToken({ prompt: 'consent' });
+    // Alleen bij eerste keer of als stille login mislukte
+    state.tokenClient.requestAccessToken({ prompt: 'select_account' });
   }
 }
 
@@ -1063,8 +1078,8 @@ function saveClientId() {
   if (!inp || !inp.value.trim()) return;
   CONFIG.CLIENT_ID = inp.value.trim();
   localStorage.setItem('gd_client_id', CONFIG.CLIENT_ID);
+  // initGoogleAuth start automatisch de auth flow
   initGoogleAuth();
-  setTimeout(signIn, 500);
 }
 
 // Allow enter to submit
