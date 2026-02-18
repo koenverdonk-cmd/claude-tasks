@@ -1,0 +1,1087 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Claude Tasks">
+<meta name="theme-color" content="#0a0f1e">
+<title>Claude Tasks</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0f1e;
+    --surface: #111827;
+    --surface2: #1a2235;
+    --border: #1e2d45;
+    --accent: #3b82f6;
+    --accent2: #06b6d4;
+    --urgent: #f43f5e;
+    --done: #10b981;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --muted2: #94a3b8;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100dvh;
+    overflow-x: hidden;
+  }
+
+  /* Background effect */
+  body::before {
+    content: '';
+    position: fixed;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(ellipse at 30% 20%, rgba(59,130,246,0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at 70% 80%, rgba(6,182,212,0.05) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  #app { position: relative; z-index: 1; max-width: 430px; margin: 0 auto; min-height: 100dvh; }
+
+  /* Header */
+  header {
+    padding: 56px 20px 20px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(to bottom, rgba(10,15,30,0.95), rgba(10,15,30,0.8));
+    backdrop-filter: blur(20px);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .header-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+
+  .logo {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--muted);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+
+  .logo span {
+    color: var(--accent2);
+  }
+
+  .auth-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .auth-btn.connect {
+    background: var(--accent);
+    color: white;
+  }
+
+  .auth-btn.connected {
+    background: rgba(16,185,129,0.15);
+    color: var(--done);
+    border: 1px solid rgba(16,185,129,0.3);
+  }
+
+  .auth-btn:active { transform: scale(0.95); }
+
+  /* Stats bar */
+  .stats {
+    display: flex;
+    gap: 16px;
+  }
+
+  .stat {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .stat-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+  }
+
+  .stat-dot.urgent { background: var(--urgent); }
+  .stat-dot.normal { background: var(--accent); }
+  .stat-dot.done { background: var(--done); }
+
+  .stat strong { color: var(--text); font-weight: 500; }
+
+  /* Tab navigation */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    padding: 12px 20px 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+
+  .tab {
+    flex-shrink: 0;
+    padding: 7px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--muted);
+    transition: all 0.2s;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .tab.active {
+    background: var(--surface2);
+    color: var(--text);
+    border-color: var(--border);
+  }
+
+  .tab:active { transform: scale(0.95); }
+
+  /* Main content */
+  main { padding: 0 20px 100px; }
+
+  /* Section */
+  .section {
+    margin-top: 24px;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+
+  .section-title {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--muted);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .section-count {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+  }
+
+  /* Task item */
+  .task {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .task::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: transparent;
+    transition: background 0.2s;
+  }
+
+  .task.urgent::before { background: var(--urgent); }
+  .task.normal::before { background: var(--accent); }
+  .task.completed { opacity: 0.5; }
+  .task.completed .task-text { text-decoration: line-through; color: var(--muted); }
+
+  .task:active { transform: scale(0.98); background: var(--surface2); }
+
+  .checkbox {
+    width: 18px;
+    height: 18px;
+    border-radius: 5px;
+    border: 1.5px solid var(--border);
+    flex-shrink: 0;
+    margin-top: 1px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+  }
+
+  .task.urgent .checkbox { border-color: var(--urgent); }
+  .task.normal .checkbox { border-color: var(--accent); }
+
+  .task.completed .checkbox {
+    background: var(--done);
+    border-color: var(--done);
+  }
+
+  .checkbox svg { display: none; }
+  .task.completed .checkbox svg { display: block; }
+
+  .task-content { flex: 1; min-width: 0; }
+
+  .task-text {
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 1.4;
+    color: var(--text);
+    word-break: break-word;
+  }
+
+  .task-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 4px;
+  }
+
+  .task-badge {
+    font-size: 10px;
+    font-family: 'DM Mono', monospace;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 400;
+  }
+
+  .badge-urgent { background: rgba(244,63,94,0.15); color: var(--urgent); }
+  .badge-section { background: rgba(59,130,246,0.1); color: var(--muted2); }
+
+  .task-time {
+    font-size: 11px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+  }
+
+  /* Empty state */
+  .empty {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  /* FAB */
+  .fab {
+    position: fixed;
+    bottom: 30px;
+    right: 24px;
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    background: var(--accent);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 24px rgba(59,130,246,0.4);
+    transition: all 0.2s;
+    z-index: 200;
+  }
+
+  .fab:active { transform: scale(0.9); }
+
+  /* Modal */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(8px);
+    z-index: 300;
+    display: none;
+    align-items: flex-end;
+  }
+
+  .modal-overlay.open { display: flex; }
+
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 24px 24px 0 0;
+    width: 100%;
+    padding: 24px 20px 40px;
+    transform: translateY(100%);
+    transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  .modal-overlay.open .modal {
+    transform: translateY(0);
+  }
+
+  .modal-handle {
+    width: 36px;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin: 0 auto 20px;
+  }
+
+  .modal-title {
+    font-size: 17px;
+    font-weight: 500;
+    margin-bottom: 20px;
+    color: var(--text);
+  }
+
+  .form-group {
+    margin-bottom: 16px;
+  }
+
+  .form-label {
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    display: block;
+    margin-bottom: 8px;
+  }
+
+  .form-input, .form-select, .form-textarea {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    padding: 12px 14px;
+    outline: none;
+    transition: border-color 0.2s;
+    -webkit-appearance: none;
+  }
+
+  .form-input:focus, .form-select:focus, .form-textarea:focus {
+    border-color: var(--accent);
+  }
+
+  .form-textarea { resize: none; min-height: 80px; }
+
+  .priority-btns {
+    display: flex;
+    gap: 8px;
+  }
+
+  .priority-btn {
+    flex: 1;
+    padding: 10px;
+    border-radius: 10px;
+    border: 1.5px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+  }
+
+  .priority-btn.selected-urgent {
+    border-color: var(--urgent);
+    background: rgba(244,63,94,0.1);
+    color: var(--urgent);
+  }
+
+  .priority-btn.selected-normal {
+    border-color: var(--accent);
+    background: rgba(59,130,246,0.1);
+    color: var(--accent);
+  }
+
+  .submit-btn {
+    width: 100%;
+    padding: 14px;
+    border-radius: 12px;
+    background: var(--accent);
+    border: none;
+    color: white;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    margin-top: 8px;
+    transition: all 0.2s;
+  }
+
+  .submit-btn:active { transform: scale(0.98); opacity: 0.9; }
+  .submit-btn:disabled { opacity: 0.5; cursor: default; }
+
+  /* Status messages */
+  .toast {
+    position: fixed;
+    bottom: 100px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 10px 18px;
+    font-size: 13px;
+    color: var(--text);
+    opacity: 0;
+    transition: all 0.3s;
+    z-index: 400;
+    white-space: nowrap;
+  }
+
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  /* Loading */
+  .loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    color: var(--muted);
+    font-size: 13px;
+    gap: 10px;
+  }
+
+  .spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Setup screen */
+  .setup {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 60dvh;
+    padding: 40px 20px;
+    text-align: center;
+  }
+
+  .setup-icon {
+    width: 72px;
+    height: 72px;
+    border-radius: 20px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 24px;
+    box-shadow: 0 12px 32px rgba(59,130,246,0.3);
+  }
+
+  .setup h2 {
+    font-size: 22px;
+    font-weight: 500;
+    margin-bottom: 10px;
+  }
+
+  .setup p {
+    font-size: 14px;
+    color: var(--muted2);
+    line-height: 1.6;
+    margin-bottom: 8px;
+  }
+
+  .setup-steps {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px;
+    margin: 20px 0;
+    text-align: left;
+    width: 100%;
+  }
+
+  .setup-step {
+    display: flex;
+    gap: 10px;
+    font-size: 13px;
+    color: var(--muted2);
+    line-height: 1.5;
+    margin-bottom: 10px;
+  }
+
+  .setup-step:last-child { margin-bottom: 0; }
+
+  .step-num {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    font-weight: 500;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  .config-input-wrap {
+    width: 100%;
+    margin-bottom: 12px;
+  }
+
+  .config-label {
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    display: block;
+    margin-bottom: 6px;
+    text-align: left;
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="root"></div>
+</div>
+
+<script>
+// ============================================================
+// CONFIG — vul in na Google Cloud setup
+// ============================================================
+const CONFIG = {
+  CLIENT_ID: localStorage.getItem('gd_client_id') || '',
+  FILE_NAME: 'TASKS.md',
+  SCOPES: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly'
+};
+
+// ============================================================
+// STATE
+// ============================================================
+let state = {
+  authenticated: false,
+  tasks: [],
+  activeTab: 'vandaag',
+  loading: false,
+  fileId: null,
+  rawContent: '',
+  tokenClient: null,
+  accessToken: null
+};
+
+const SECTIONS = ['Maandag','Dinsdag','Woensdag','Donderdag','Vrijdag','Weekend','Deze week','Backlog'];
+const TABS = [
+  { id: 'vandaag', label: 'Vandaag' },
+  { id: 'week', label: 'Deze week' },
+  { id: 'alles', label: 'Alles' },
+  { id: 'urgent', label: '🔴 Urgent' },
+  { id: 'completed', label: 'Afgerond' }
+];
+
+// ============================================================
+// MARKDOWN PARSER
+// ============================================================
+function parseTasks(md) {
+  const lines = md.split('\n');
+  const tasks = [];
+  let currentSection = '';
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const sectionMatch = line.match(/^## (.+)/);
+    if (sectionMatch) { currentSection = sectionMatch[1].trim(); continue; }
+
+    const taskMatch = line.match(/^- \[([ x])\] (.+)/);
+    if (taskMatch) {
+      const completed = taskMatch[1] === 'x';
+      let text = taskMatch[2];
+      const urgent = text.includes('🔴');
+      // Extract time if present
+      const timeMatch = text.match(/\((\d{2}:\d{2}(?:-\d{2}:\d{2})?)\)/);
+      const time = timeMatch ? timeMatch[1] : null;
+      // Clean text
+      text = text.replace(/🔴\s*/, '').replace(/\*\*/g, '').replace(/\s*\([\d:]+(?:-[\d:]+)?\)/, '').trim();
+
+      tasks.push({ id: `${i}`, line: i, text, completed, urgent, section: currentSection, time, raw: lines[i] });
+    }
+  }
+  return tasks;
+}
+
+function serializeTasks(md, taskId, completed) {
+  const lines = md.split('\n');
+  const task = state.tasks.find(t => t.id === taskId);
+  if (!task) return md;
+
+  const lineIdx = task.line;
+  if (completed) {
+    lines[lineIdx] = lines[lineIdx].replace('- [ ]', '- [x]');
+  } else {
+    lines[lineIdx] = lines[lineIdx].replace('- [x]', '- [ ]');
+  }
+  return lines.join('\n');
+}
+
+function appendTask(md, text, section, urgent) {
+  const lines = md.split('\n');
+  const prefix = urgent ? '- [ ] 🔴 **' : '- [ ] **';
+  const newTask = `${prefix}${text}**`;
+  const sectionHeader = `## ${section}`;
+
+  for (let i = 0; i < lines.length; i++) {
+    if (lines[i].trim() === sectionHeader) {
+      lines.splice(i + 1, 0, newTask);
+      return lines.join('\n');
+    }
+  }
+  // Section not found, append at end
+  return md + `\n${sectionHeader}\n${newTask}\n`;
+}
+
+// ============================================================
+// GOOGLE DRIVE API
+// ============================================================
+function initGoogleAuth() {
+  if (!CONFIG.CLIENT_ID) return;
+  if (!window.google) { setTimeout(initGoogleAuth, 500); return; }
+
+  state.tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: CONFIG.CLIENT_ID,
+    scope: CONFIG.SCOPES,
+    callback: async (response) => {
+      if (response.error) { showToast('Auth mislukt'); return; }
+      state.accessToken = response.access_token;
+      state.authenticated = true;
+      render();
+      await loadFile();
+    }
+  });
+}
+
+function signIn() {
+  if (!CONFIG.CLIENT_ID) {
+    showToast('Voer eerst Client ID in');
+    return;
+  }
+  if (state.tokenClient) {
+    state.tokenClient.requestAccessToken({ prompt: 'consent' });
+  }
+}
+
+async function findFile() {
+  const res = await fetch(
+    `https://www.googleapis.com/drive/v3/files?q=name='${CONFIG.FILE_NAME}' and trashed=false&fields=files(id,name,modifiedTime)`,
+    { headers: { 'Authorization': `Bearer ${state.accessToken}` } }
+  );
+  const data = await res.json();
+  return data.files && data.files.length > 0 ? data.files[0] : null;
+}
+
+async function loadFile() {
+  state.loading = true;
+  render();
+
+  try {
+    const file = await findFile();
+    if (!file) {
+      showToast('TASKS.md niet gevonden in Drive');
+      state.loading = false;
+      render();
+      return;
+    }
+    state.fileId = file.id;
+
+    const res = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${file.id}?alt=media`,
+      { headers: { 'Authorization': `Bearer ${state.accessToken}` } }
+    );
+    state.rawContent = await res.text();
+    state.tasks = parseTasks(state.rawContent);
+    showToast('✓ Gesynchroniseerd');
+  } catch (e) {
+    showToast('Laden mislukt');
+  }
+
+  state.loading = false;
+  render();
+}
+
+async function saveFile(content) {
+  if (!state.fileId) return;
+  const blob = new Blob([content], { type: 'text/markdown' });
+  const form = new FormData();
+  form.append('metadata', new Blob([JSON.stringify({ name: CONFIG.FILE_NAME })], { type: 'application/json' }));
+  form.append('file', blob);
+
+  await fetch(
+    `https://www.googleapis.com/upload/drive/v3/files/${state.fileId}?uploadType=multipart`,
+    { method: 'PATCH', headers: { 'Authorization': `Bearer ${state.accessToken}` }, body: form }
+  );
+}
+
+async function toggleTask(taskId) {
+  const task = state.tasks.find(t => t.id === taskId);
+  if (!task) return;
+
+  const newCompleted = !task.completed;
+  const newContent = serializeTasks(state.rawContent, taskId, newCompleted);
+  state.rawContent = newContent;
+  state.tasks = parseTasks(newContent);
+  render();
+
+  await saveFile(newContent);
+  showToast(newCompleted ? '✓ Afgevinkt' : '↩ Heropend');
+}
+
+async function addTask(text, section, urgent) {
+  const newContent = appendTask(state.rawContent, text, section, urgent);
+  state.rawContent = newContent;
+  state.tasks = parseTasks(newContent);
+  render();
+  await saveFile(newContent);
+  showToast('✓ Taak toegevoegd');
+}
+
+// ============================================================
+// UI HELPERS
+// ============================================================
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  if (!t) return;
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function getFilteredTasks() {
+  const today = new Date();
+  const dayNames = ['Zondag','Maandag','Dinsdag','Woensdag','Donderdag','Vrijdag','Zaterdag'];
+  const todayName = dayNames[today.getDay()];
+  const isWeekend = today.getDay() === 0 || today.getDay() === 6;
+
+  switch (state.activeTab) {
+    case 'vandaag':
+      return state.tasks.filter(t => !t.completed &&
+        (t.section === todayName || t.section === (isWeekend ? 'Weekend' : '') ||
+         (isWeekend && t.section === 'Weekend')));
+    case 'week':
+      return state.tasks.filter(t => !t.completed && t.section === 'Deze week');
+    case 'urgent':
+      return state.tasks.filter(t => !t.completed && t.urgent);
+    case 'completed':
+      return state.tasks.filter(t => t.completed);
+    default:
+      return state.tasks.filter(t => !t.completed);
+  }
+}
+
+// ============================================================
+// RENDER
+// ============================================================
+let modalOpen = false;
+let selectedPriority = 'normal';
+let selectedSection = 'Deze week';
+
+function renderTask(task) {
+  return `
+    <div class="task ${task.urgent ? 'urgent' : 'normal'} ${task.completed ? 'completed' : ''}"
+         onclick="toggleTask('${task.id}')">
+      <div class="checkbox">
+        <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+          <path d="M1 4L3.5 6.5L9 1" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div class="task-content">
+        <div class="task-text">${escapeHtml(task.text)}</div>
+        <div class="task-meta">
+          ${task.urgent ? '<span class="task-badge badge-urgent">urgent</span>' : ''}
+          ${state.activeTab === 'alles' || state.activeTab === 'urgent' ? `<span class="task-badge badge-section">${escapeHtml(task.section)}</span>` : ''}
+          ${task.time ? `<span class="task-time">${task.time}</span>` : ''}
+        </div>
+      </div>
+    </div>`;
+}
+
+function escapeHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function renderSetup() {
+  const savedId = localStorage.getItem('gd_client_id') || '';
+  return `
+    <div class="setup">
+      <div class="setup-icon">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5">
+          <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+      </div>
+      <h2>Claude Tasks</h2>
+      <p>Verbind met Google Drive om je TASKS.md te lezen en bij te werken vanaf je telefoon.</p>
+
+      <div class="setup-steps">
+        <div class="setup-step">
+          <span class="step-num">01</span>
+          <span>Ga naar <strong>console.cloud.google.com</strong> → nieuw project → OAuth 2.0 Client ID (Web)</span>
+        </div>
+        <div class="setup-step">
+          <span class="step-num">02</span>
+          <span>Voeg als Authorized JavaScript Origin toe: de URL van deze pagina</span>
+        </div>
+        <div class="setup-step">
+          <span class="step-num">03</span>
+          <span>Schakel de <strong>Google Drive API</strong> in voor je project</span>
+        </div>
+        <div class="setup-step">
+          <span class="step-num">04</span>
+          <span>Plak je Client ID hieronder en verbind</span>
+        </div>
+      </div>
+
+      <div class="config-input-wrap">
+        <label class="config-label">Google OAuth Client ID</label>
+        <input class="form-input" id="client-id-input" placeholder="xxxx.apps.googleusercontent.com"
+               value="${savedId}" style="margin-bottom:12px">
+      </div>
+
+      <button class="submit-btn" onclick="saveClientId()">
+        Verbinden met Google Drive →
+      </button>
+    </div>`;
+}
+
+function render() {
+  const root = document.getElementById('root');
+  const tasks = getFilteredTasks();
+  const totalOpen = state.tasks.filter(t => !t.completed).length;
+  const totalUrgent = state.tasks.filter(t => !t.completed && t.urgent).length;
+  const totalDone = state.tasks.filter(t => t.completed).length;
+
+  if (!CONFIG.CLIENT_ID && !state.authenticated) {
+    root.innerHTML = renderSetup() + renderModal() + renderToast();
+    return;
+  }
+
+  // Group tasks by section for 'alles' tab
+  let tasksHTML = '';
+  if (state.loading) {
+    tasksHTML = `<div class="loading"><div class="spinner"></div> Laden...</div>`;
+  } else if (!state.authenticated) {
+    tasksHTML = `
+      <div class="setup" style="min-height:50dvh">
+        <div class="setup-icon">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5">
+            <path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+          </svg>
+        </div>
+        <h2>Verbinding vereist</h2>
+        <p>Klik op "Verbind Drive" om toegang te krijgen tot je TASKS.md</p>
+      </div>`;
+  } else if (state.activeTab === 'alles') {
+    const bySec = {};
+    tasks.forEach(t => {
+      if (!bySec[t.section]) bySec[t.section] = [];
+      bySec[t.section].push(t);
+    });
+    if (Object.keys(bySec).length === 0) {
+      tasksHTML = `<div class="empty">Geen openstaande taken</div>`;
+    } else {
+      Object.entries(bySec).forEach(([sec, secTasks]) => {
+        tasksHTML += `
+          <div class="section">
+            <div class="section-header">
+              <span class="section-title">${escapeHtml(sec)}</span>
+              <span class="section-count">${secTasks.length}</span>
+            </div>
+            ${secTasks.map(renderTask).join('')}
+          </div>`;
+      });
+    }
+  } else {
+    if (tasks.length === 0) {
+      tasksHTML = `<div class="empty">${state.activeTab === 'vandaag' ? '🎉 Alles gedaan voor vandaag' : 'Geen taken'}</div>`;
+    } else {
+      tasksHTML = `<div class="section">${tasks.map(renderTask).join('')}</div>`;
+    }
+  }
+
+  root.innerHTML = `
+    <header>
+      <div class="header-top">
+        <span class="logo">Claude <span>Tasks</span></span>
+        ${state.authenticated
+          ? `<button class="auth-btn connected" onclick="loadFile()">↻ Sync</button>`
+          : `<button class="auth-btn connect" onclick="signIn()">Verbind Drive</button>`}
+      </div>
+      <div class="stats">
+        <div class="stat"><div class="stat-dot urgent"></div><strong>${totalUrgent}</strong> urgent</div>
+        <div class="stat"><div class="stat-dot normal"></div><strong>${totalOpen - totalUrgent}</strong> open</div>
+        <div class="stat"><div class="stat-dot done"></div><strong>${totalDone}</strong> klaar</div>
+      </div>
+    </header>
+
+    <div class="tabs">
+      ${TABS.map(t => `<button class="tab ${state.activeTab === t.id ? 'active' : ''}"
+        onclick="switchTab('${t.id}')">${t.label}</button>`).join('')}
+    </div>
+
+    <main>${tasksHTML}</main>
+
+    ${renderModal()}
+    ${renderToast()}
+
+    <button class="fab" onclick="openModal()">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+      </svg>
+    </button>
+  `;
+}
+
+function renderModal() {
+  return `
+    <div class="modal-overlay ${modalOpen ? 'open' : ''}" id="modal" onclick="handleOverlayClick(event)">
+      <div class="modal">
+        <div class="modal-handle"></div>
+        <div class="modal-title">Nieuwe taak</div>
+
+        <div class="form-group">
+          <label class="form-label">Taak</label>
+          <input class="form-input" id="task-input" placeholder="Beschrijf de taak..." autocomplete="off">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Prioriteit</label>
+          <div class="priority-btns">
+            <button class="priority-btn ${selectedPriority === 'urgent' ? 'selected-urgent' : ''}"
+              onclick="setPriority('urgent')">🔴 Urgent</button>
+            <button class="priority-btn ${selectedPriority === 'normal' ? 'selected-normal' : ''}"
+              onclick="setPriority('normal')">Normaal</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Sectie</label>
+          <select class="form-select" id="section-select">
+            ${SECTIONS.map(s => `<option value="${s}" ${s === selectedSection ? 'selected' : ''}>${s}</option>`).join('')}
+          </select>
+        </div>
+
+        <button class="submit-btn" id="submit-task" onclick="submitTask()">Toevoegen →</button>
+      </div>
+    </div>`;
+}
+
+function renderToast() {
+  return `<div class="toast" id="toast"></div>`;
+}
+
+// ============================================================
+// EVENT HANDLERS
+// ============================================================
+function switchTab(tab) {
+  state.activeTab = tab;
+  render();
+}
+
+function openModal() {
+  if (!state.authenticated) { signIn(); return; }
+  modalOpen = true;
+  render();
+  setTimeout(() => {
+    const inp = document.getElementById('task-input');
+    if (inp) inp.focus();
+  }, 300);
+}
+
+function closeModal() {
+  modalOpen = false;
+  render();
+}
+
+function handleOverlayClick(e) {
+  if (e.target.id === 'modal') closeModal();
+}
+
+function setPriority(p) {
+  selectedPriority = p;
+  render();
+  // Keep modal open
+  modalOpen = true;
+  setTimeout(() => {
+    const inp = document.getElementById('task-input');
+    if (inp) inp.focus();
+  }, 50);
+}
+
+async function submitTask() {
+  const input = document.getElementById('task-input');
+  const sectionSel = document.getElementById('section-select');
+  if (!input || !input.value.trim()) { showToast('Voer een taaknaam in'); return; }
+
+  const text = input.value.trim();
+  const section = sectionSel ? sectionSel.value : selectedSection;
+  const urgent = selectedPriority === 'urgent';
+
+  closeModal();
+  await addTask(text, section, urgent);
+}
+
+function saveClientId() {
+  const inp = document.getElementById('client-id-input');
+  if (!inp || !inp.value.trim()) return;
+  CONFIG.CLIENT_ID = inp.value.trim();
+  localStorage.setItem('gd_client_id', CONFIG.CLIENT_ID);
+  initGoogleAuth();
+  setTimeout(signIn, 500);
+}
+
+// Allow enter to submit
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && modalOpen) submitTask();
+});
+
+// ============================================================
+// BOOT
+// ============================================================
+render();
+window.addEventListener('load', () => {
+  initGoogleAuth();
+});
+</script>
+
+<!-- Google Identity Services -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+</body>
+</html>
